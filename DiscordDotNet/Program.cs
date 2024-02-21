@@ -3,7 +3,9 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordDotNet.EventListener;
+using DiscordDotNet.Services;
 using DiscordDotNet.Slash_commands;
+using Lavalink4NET.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using static DiscordDotNet.Slash_commands.SlashCommandRegisterer;
@@ -29,7 +31,9 @@ public class Program
                 services.AddSingleton(_ => new DiscordSocketClient(config))
                     .AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>())
                     .AddScoped<DiscordEventListener>()
-                    .AddScoped<SlashCommandsListener>())
+                    .AddScoped<SlashCommandsListener>()
+                    .AddLavalink()
+                    .AddScoped<AudioService>())
             .Build();
 
         DotNetEnv.Env.TraversePath().Load();

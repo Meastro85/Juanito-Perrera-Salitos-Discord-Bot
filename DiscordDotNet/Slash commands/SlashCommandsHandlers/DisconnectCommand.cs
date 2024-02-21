@@ -30,6 +30,7 @@ public class DisconnectCommand : ISlashCommand
 
         SocketGuild guild = ((SocketGuildChannel)(command.Channel)).Guild;
         SocketGuildUser bot = guild.CurrentUser;
+        
         if (bot.VoiceChannel == null)
         {
             await command.RespondAsync("I'm not connected to a voice chat.");
