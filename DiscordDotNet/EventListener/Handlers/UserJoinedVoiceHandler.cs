@@ -11,9 +11,11 @@ public class UserJoinedVoiceHandler : INotificationHandler<UserJoinedVoiceNotifi
         var currentVoiceState = notification.NewState;
         var currentChannel = currentVoiceState.VoiceChannel;
 
-        if (user.Id == 186206650363805697)
+        // This is a user specific implementation.
+        DotNetEnv.Env.TraversePath().Load();
+        if (user.Id == ulong.Parse(DotNetEnv.Env.GetString("USER-AZAN-MEME")))
         {
-            await currentChannel.ConnectAsync(true);
+            await currentChannel.ConnectAsync(true, external: true); 
         }
         
     }

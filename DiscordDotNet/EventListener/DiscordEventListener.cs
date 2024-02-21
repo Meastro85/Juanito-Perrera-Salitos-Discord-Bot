@@ -29,6 +29,7 @@ public class DiscordEventListener
 
     public async Task StartAsync()
     {
+        
         _client.UserVoiceStateUpdated += OnUserJoinedVoiceAsync;
         _client.MessageReceived += OnGuildMessageReceivedAsync;
         
