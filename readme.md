@@ -5,6 +5,6 @@ Feel free to use this code for your own server, keep in mind there may be some u
 
 your bot token should be in a .env file with following keys:
 
-BOT-TOKEN=
+BOT_TOKEN=
 
-TESTING-GUILD=
+TESTING_GUILD=

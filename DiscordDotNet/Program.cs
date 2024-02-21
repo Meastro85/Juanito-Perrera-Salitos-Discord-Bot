@@ -1,73 +1,82 @@
 ﻿using System.Text;
 using Discord;
+using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordDotNet.EventListener;
-using DiscordDotNet.Services;
-using DiscordDotNet.Slash_commands;
+using Lavalink4NET;
 using Lavalink4NET.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using static DiscordDotNet.Slash_commands.SlashCommandRegisterer;
 
 namespace DiscordDotNet;
 
 public class Program
 {
-    private static string _botToken;
-    private static DiscordSocketClient _client;
-    private static DiscordEventListener _listener;
-    private static SlashCommandsListener _commandsListener;
-    private static InteractionService _interactionService;
-    private static IServiceProvider _serviceProvider;
+    public static Task Main(string[] args) => new Program().MainAsync();
 
-    private static async Task Main()
+    private async Task MainAsync()
     {
-        DiscordSocketConfig config = new()
-        {
-            UseInteractionSnowflakeDate = false
-        };
-        using IHost host = Host.CreateDefaultBuilder().ConfigureServices((_, services) =>
-                services.AddSingleton(_ => new DiscordSocketClient(config))
+        
+        using IHost host = Host.CreateDefaultBuilder()
+            .ConfigureServices((_, services) =>
+                services
+                    .AddSingleton(_ => new DiscordSocketClient(new DiscordSocketConfig
+                    {
+                        UseInteractionSnowflakeDate = false,
+                        GatewayIntents = GatewayIntents.AllUnprivileged,
+                        AlwaysDownloadUsers = true
+                    }))
+                    .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
+                    .AddSingleton<InteractionHandler>()
+                    .AddSingleton(_ => new CommandService())
                     .AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>())
                     .AddScoped<DiscordEventListener>()
-                    .AddScoped<SlashCommandsListener>()
                     .AddLavalink()
-                    .AddScoped<AudioService>())
+                    .ConfigureLavalink(options =>
+                    {
+                        options.Passphrase = "";
+                        options.BaseAddress = new Uri("https://lavalink-sever.Meastro.repl.co");
+                        options.HttpClientName = "LavalinkHttpClient";
+                    }))
             .Build();
 
+        await RunAsync(host);
+    }
+
+    private async Task RunAsync(IHost host)
+    {
+
         DotNetEnv.Env.TraversePath().Load();
-        _botToken = DotNetEnv.Env.GetString("BOT-TOKEN");
-
+        
         using IServiceScope serviceScope = host.Services.CreateScope();
-        _serviceProvider = serviceScope.ServiceProvider;
+        var serviceProvider = serviceScope.ServiceProvider;
 
-        
-        
-        _client = _serviceProvider.GetRequiredService<DiscordSocketClient>();
-        _client.Log += Log;
-        _client.Ready += ClientReady;
-        
-        _listener = _serviceProvider.GetRequiredService<DiscordEventListener>();
-        _commandsListener = _serviceProvider.GetRequiredService<SlashCommandsListener>();
 
-        await _client.LoginAsync(TokenType.Bot, _botToken);
-        await _client.StartAsync();
+        var client = serviceProvider.GetRequiredService<DiscordSocketClient>();
+        var slashCommands = serviceProvider.GetRequiredService<InteractionService>();
+        await serviceProvider.GetRequiredService<InteractionHandler>().InitializeAsync();
+        await serviceProvider.GetRequiredService<IAudioService>().StartAsync();
         
-        await _commandsListener.StartAsync();
-        await _listener.StartAsync();
+        client.Log += Log;
+        client.Ready += async () =>
+        {
+            await slashCommands.RegisterCommandsToGuildAsync(ulong.Parse(DotNetEnv.Env.GetString("TESTING_GUILD")));
+        };
+        slashCommands.Log += Log;
+        var eventListener = serviceProvider.GetRequiredService<DiscordEventListener>();
+
+        await client.LoginAsync(TokenType.Bot, DotNetEnv.Env.GetString("BOT_TOKEN"));
+        await client.StartAsync();
+
+        //await eventListener.StartAsync();
 
         await Task.Delay(-1);
     }
-    
-    private static Task ClientReady()
+
+    public static Task Log(LogMessage msg)
     {
-        return RegisterCommands(_client);
-    }
-    
-    private static Task Log(LogMessage msg)
-    {
-        string logPath = "../../../../Logs/";
+        string logPath = "../../../../../Logs/";
         string logFile = $"{DateTime.Today.ToString("dd/MM/yyyy").Replace("/", "")}.log";
         Console.WriteLine(msg.ToString());
 
