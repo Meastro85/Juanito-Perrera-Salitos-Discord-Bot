@@ -32,12 +32,9 @@ public class Program
                     .AddSingleton(_ => new CommandService())
                     .AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>())
                     .AddScoped<DiscordEventListener>()
-                    .AddLavalink()
-                    .ConfigureLavalink(options =>
-                    {
-                    }))
+                    .AddLavalink())
             .Build();
-
+        
         await RunAsync(host);
     }
 

@@ -44,6 +44,10 @@ public class AudioCommands : InteractionModuleBase<SocketInteractionContext>
 
         await player.PlayAsync(track).ConfigureAwait(false);
 
+        if (player.State == PlayerState.NotPlaying)
+        {
+            return;
+        }
         await FollowupAsync($"Adding {track.Title} by {track.Author} to the queue.").ConfigureAwait(false);
     }
     
@@ -58,6 +62,12 @@ public class AudioCommands : InteractionModuleBase<SocketInteractionContext>
 
         var user = Context.Guild.GetUser(Context.User.Id);
         var voiceChannel = user.VoiceChannel;
+        if (voiceChannel == null)
+        {
+            await FollowupAsync("You are not currently in a voice channel.").ConfigureAwait(false);
+            return null;
+
+        }
         var result = await _audioService.Players
             .RetrieveAsync(Context.Guild.Id,
                 voiceChannel.Id,
