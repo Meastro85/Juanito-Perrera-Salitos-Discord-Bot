@@ -1,5 +1,6 @@
 ﻿using Discord.Interactions;
 using Lavalink4NET;
+using Lavalink4NET.Events.Players;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
 using Lavalink4NET.Rest.Entities.Tracks;
@@ -9,12 +10,13 @@ namespace DiscordDotNet.Slash_commands.SlashCommandsHandlers;
 
 public class AudioCommands : InteractionModuleBase<SocketInteractionContext>
 {
-
+    
     private readonly IAudioService _audioService;
 
     public AudioCommands(IAudioService audioService)
     {
         _audioService = audioService;
+        _audioService.TrackEnded += TrackEndedAsync;
     }
 
     [SlashCommand("play", description: "Search and play the given song.", runMode: RunMode.Async)]
@@ -28,7 +30,7 @@ public class AudioCommands : InteractionModuleBase<SocketInteractionContext>
         {
             return;
         }
-
+ 
         var track = await _audioService.Tracks
             .LoadTrackAsync(query, TrackSearchMode.YouTube)
             .ConfigureAwait(false);
@@ -40,12 +42,19 @@ public class AudioCommands : InteractionModuleBase<SocketInteractionContext>
         }
 
         await player.PlayAsync(track).ConfigureAwait(false);
-        await FollowupAsync($"Now playing: {track.SourceName}").ConfigureAwait(false);
-
+        if (player.State == PlayerState.Playing)
+        {
+            await FollowupAsync($"Added {track.Title} to the queue.").ConfigureAwait(false);
+        }
+        else
+        {
+            await FollowupAsync($"Now playing: {track.Title}").ConfigureAwait(false);
+        }
     }
     
     private async ValueTask<QueuedLavalinkPlayer?> GetPlayerAsync(bool connectToVoiceChannel = true)
     {
+        
         var channelBehavior = connectToVoiceChannel
             ? PlayerChannelBehavior.Join
             : PlayerChannelBehavior.None;
@@ -80,5 +89,12 @@ public class AudioCommands : InteractionModuleBase<SocketInteractionContext>
         return null;
 
     }
+
+    private async Task TrackEndedAsync(object obj, TrackEndedEventArgs args)
+    {
+        
+    }
+    
+    
     
 }

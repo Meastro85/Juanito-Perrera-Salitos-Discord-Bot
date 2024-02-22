@@ -35,9 +35,6 @@ public class Program
                     .AddLavalink()
                     .ConfigureLavalink(options =>
                     {
-                        options.Passphrase = "";
-                        options.BaseAddress = new Uri("https://lavalink-sever.Meastro.repl.co");
-                        options.HttpClientName = "LavalinkHttpClient";
                     }))
             .Build();
 
