@@ -17,6 +17,7 @@ public class AudioCommands : InteractionModuleBase<SocketInteractionContext>
     {
         _audioService = audioService;
         _audioService.TrackEnded += TrackEndedAsync;
+        _audioService.TrackStarted += TrackStartedAsync;
     }
 
     [SlashCommand("play", description: "Search and play the given song.", runMode: RunMode.Async)]
@@ -42,14 +43,8 @@ public class AudioCommands : InteractionModuleBase<SocketInteractionContext>
         }
 
         await player.PlayAsync(track).ConfigureAwait(false);
-        if (player.State == PlayerState.Playing)
-        {
-            await FollowupAsync($"Added {track.Title} to the queue.").ConfigureAwait(false);
-        }
-        else
-        {
-            await FollowupAsync($"Now playing: {track.Title}").ConfigureAwait(false);
-        }
+
+        await FollowupAsync($"Adding {track.Title} by {track.Author} to the queue.").ConfigureAwait(false);
     }
     
     private async ValueTask<QueuedLavalinkPlayer?> GetPlayerAsync(bool connectToVoiceChannel = true)
@@ -94,7 +89,11 @@ public class AudioCommands : InteractionModuleBase<SocketInteractionContext>
     {
         
     }
-    
-    
-    
+
+    private async Task TrackStartedAsync(object obj, TrackStartedEventArgs args)
+    {
+        await FollowupAsync($"Now playing: {args.Track.Title} by {args.Track.Author}").ConfigureAwait(false);
+        
+    }
+
 }
