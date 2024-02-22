@@ -4,6 +4,7 @@ using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordDotNet.EventListener;
+using DiscordDotNet.Services;
 using Lavalink4NET;
 using Lavalink4NET.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +19,7 @@ public class Program
     private async Task MainAsync()
     {
         
+        DotNetEnv.Env.TraversePath().Load();
         using IHost host = Host.CreateDefaultBuilder()
             .ConfigureServices((_, services) =>
                 services
@@ -32,7 +34,12 @@ public class Program
                     .AddSingleton(_ => new CommandService())
                     .AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>())
                     .AddScoped<DiscordEventListener>()
-                    .AddLavalink())
+                    .AddScoped<LavalinkAudioService>()
+                    .AddLavalink()
+                    .ConfigureLavalink(options =>
+                    {
+                        options.Passphrase = DotNetEnv.Env.GetString("LAVALINK_PASS");
+                    }))
             .Build();
         
         await RunAsync(host);
@@ -63,7 +70,7 @@ public class Program
         await client.LoginAsync(TokenType.Bot, DotNetEnv.Env.GetString("BOT_TOKEN"));
         await client.StartAsync();
 
-        //await eventListener.StartAsync();
+        await eventListener.StartAsync();
 
         await Task.Delay(-1);
     }

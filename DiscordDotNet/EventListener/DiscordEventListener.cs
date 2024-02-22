@@ -1,5 +1,7 @@
 ﻿using Discord.WebSocket;
 using DiscordDotNet.EventListener.Notifications;
+using DiscordDotNet.Services;
+using Lavalink4NET;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -40,7 +42,10 @@ public class DiscordEventListener
     {
         if (voiceState2.VoiceChannel != null && !user.IsBot)
         {
-            return Mediator.Publish(new UserJoinedVoiceNotification(user, voiceState, voiceState2), _cancellationToken);
+            return Mediator.Publish(new UserJoinedVoiceNotification(user,
+                voiceState,
+                voiceState2,
+                _serviceScope.CreateScope().ServiceProvider.GetRequiredService<LavalinkAudioService>()), _cancellationToken);
         }
 
         return Task.CompletedTask;

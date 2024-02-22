@@ -1,8 +1,11 @@
 ﻿using Discord.Interactions;
+using Discord.WebSocket;
+using DiscordDotNet.Services;
 using Lavalink4NET;
 using Lavalink4NET.Events.Players;
 using Lavalink4NET.Players;
 using Lavalink4NET.Players.Queued;
+using Lavalink4NET.Rest;
 using Lavalink4NET.Rest.Entities.Tracks;
 using Microsoft.Extensions.Options;
 
@@ -12,10 +15,12 @@ public class AudioCommands : InteractionModuleBase<SocketInteractionContext>
 {
     
     private readonly IAudioService _audioService;
+    private readonly LavalinkAudioService _customService;
 
-    public AudioCommands(IAudioService audioService)
+    public AudioCommands(IAudioService audioService, LavalinkAudioService service)
     {
         _audioService = audioService;
+        _customService = service;
         _audioService.TrackEnded += TrackEndedAsync;
         _audioService.TrackStarted += TrackStartedAsync;
     }
@@ -25,16 +30,24 @@ public class AudioCommands : InteractionModuleBase<SocketInteractionContext>
     {
         await DeferAsync().ConfigureAwait(false);
 
-        var player = await GetPlayerAsync().ConfigureAwait(false);
+        var user = Context.Guild.GetUser(Context.User.Id);
+        var voiceChannel = user.VoiceChannel;
+        if (voiceChannel == null)
+        {
+            await FollowupAsync("You are not currently in a voice channel.").ConfigureAwait(false);
+            return;
+
+        }
+        
+        var player = await _customService.GetPlayerAsync(Context.Guild.Id, voiceChannel.Id).ConfigureAwait(false);
 
         if (player is null)
         {
+            
             return;
         }
- 
-        var track = await _audioService.Tracks
-            .LoadTrackAsync(query, TrackSearchMode.YouTube)
-            .ConfigureAwait(false);
+
+        var track = _customService.GetTrack(query).Result;
 
         if (track is null)
         {
@@ -50,60 +63,19 @@ public class AudioCommands : InteractionModuleBase<SocketInteractionContext>
         }
         await FollowupAsync($"Adding {track.Title} by {track.Author} to the queue.").ConfigureAwait(false);
     }
-    
-    private async ValueTask<QueuedLavalinkPlayer?> GetPlayerAsync(bool connectToVoiceChannel = true)
-    {
-        
-        var channelBehavior = connectToVoiceChannel
-            ? PlayerChannelBehavior.Join
-            : PlayerChannelBehavior.None;
-
-        var retrieveOptions = new PlayerRetrieveOptions(ChannelBehavior: channelBehavior);
-
-        var user = Context.Guild.GetUser(Context.User.Id);
-        var voiceChannel = user.VoiceChannel;
-        if (voiceChannel == null)
-        {
-            await FollowupAsync("You are not currently in a voice channel.").ConfigureAwait(false);
-            return null;
-
-        }
-        var result = await _audioService.Players
-            .RetrieveAsync(Context.Guild.Id,
-                voiceChannel.Id,
-                PlayerFactory.Queued,
-                new OptionsWrapper<QueuedLavalinkPlayerOptions>(new QueuedLavalinkPlayerOptions()
-                {
-                    ClearHistoryOnStop = true,
-                    ClearQueueOnStop = true,
-                    DisconnectOnDestroy = true,
-                    DisconnectOnStop = true
-                }),
-                retrieveOptions)
-            .ConfigureAwait(false);
-
-        if (result.IsSuccess) return result.Player;
-        var errorMessage = result.Status switch
-        {
-            PlayerRetrieveStatus.UserNotInVoiceChannel => "You are not connected to a voice channel.",
-            PlayerRetrieveStatus.BotNotConnected => "The bot is currently not connected.",
-            _ => "Unknown error."
-        };
-
-        await FollowupAsync(errorMessage).ConfigureAwait(false);
-        return null;
-
-    }
 
     private async Task TrackEndedAsync(object obj, TrackEndedEventArgs args)
     {
-        
+        await Task.CompletedTask;
     }
 
     private async Task TrackStartedAsync(object obj, TrackStartedEventArgs args)
     {
+        if (Context is null)
+        {
+            return;
+        }
         await FollowupAsync($"Now playing: {args.Track.Title} by {args.Track.Author}").ConfigureAwait(false);
-        
     }
 
 }
